@@ -1,0 +1,74 @@
+diff --git a/iosMath/render/MTFont.m b/iosMath/render/MTFont.m
+index 2488039..ada59e2 100644
+--- a/iosMath/render/MTFont.m
++++ b/iosMath/render/MTFont.m
+@@ -10,6 +10,7 @@
+ 
+ #import "MTFont.h"
+ #import "MTFont+Internal.h"
++NSData *MTEmbeddedFontData(NSString *filename);
+ 
+ @interface MTFont ()
+ 
+@@ -19,7 +20,6 @@ @interface MTFont ()
+ @property (nonatomic, strong) MTFontMathTable* mathTable;
+ @property (nonatomic, strong) NSDictionary* rawMathTable;
+ 
+-+ (NSBundle*) fontBundle;
+ 
+ @end
+ 
+@@ -39,9 +39,8 @@ CTFontRef MTCreateVerifiedFontWithPostScriptName(NSString* psName, CGFloat size)
+ 
+ static CTFontRef MTCreateBundledItalicFont(CGFloat size)
+ {
+-    NSString* fontPath = [[MTFont fontBundle] pathForResource:@"lmroman10-italic" ofType:@"otf" inDirectory:@"fonts"];
+-    if (!fontPath) { return NULL; }
+-    CGDataProviderRef provider = CGDataProviderCreateWithFilename(fontPath.UTF8String);
++    NSData* fontData = MTEmbeddedFontData(@"lmroman10-italic.otf");
++    CGDataProviderRef provider = fontData ? CGDataProviderCreateWithCFData((__bridge CFDataRef)fontData) : NULL;
+     if (!provider) { return NULL; }
+     CGFontRef cgFont = CGFontCreateWithDataProvider(provider);
+     CFRelease(provider);
+@@ -85,10 +84,8 @@ - (instancetype)initFontWithName:(NSString *)name size:(CGFloat)size
+         // In particular it does not have the math italic characters which breaks our variable rendering.
+         // So we first load a CGFont from the file and then convert it to a CTFont.
+ 
+-        NSBundle* bundle = [MTFont fontBundle];
+-        NSString* fontPath = [bundle pathForResource:name ofType:@"otf" inDirectory:@"fonts"];
+-        if (!fontPath) { return nil; }
+-        CGDataProviderRef fontDataProvider = CGDataProviderCreateWithFilename(fontPath.UTF8String);
++        NSData* fontData = MTEmbeddedFontData([name stringByAppendingPathExtension:@"otf"]);
++        CGDataProviderRef fontDataProvider = fontData ? CGDataProviderCreateWithCFData((__bridge CFDataRef)fontData) : NULL;
+         if (!fontDataProvider) { return nil; }
+         _defaultCGFont = CGFontCreateWithDataProvider(fontDataProvider);
+         CFRelease(fontDataProvider);
+@@ -96,8 +93,8 @@ - (instancetype)initFontWithName:(NSString *)name size:(CGFloat)size
+ 
+         _ctFont = CTFontCreateWithGraphicsFont(self.defaultCGFont, size, nil, nil);
+ 
+-        NSString* mathTablePlist = [bundle pathForResource:name ofType:@"plist" inDirectory:@"fonts"];
+-        NSDictionary* dict = mathTablePlist ? [NSDictionary dictionaryWithContentsOfFile:mathTablePlist] : nil;
++        NSData* mathTableData = MTEmbeddedFontData([name stringByAppendingPathExtension:@"plist"]);
++        NSDictionary* dict = mathTableData ? [NSPropertyListSerialization propertyListWithData:mathTableData options:NSPropertyListImmutable format:nil error:nil] : nil;
+         if (!dict) { return nil; }
+         self.rawMathTable = dict;
+         self.mathTable = [[MTFontMathTable alloc] initWithFont:self mathTable:_rawMathTable];
+@@ -144,17 +141,6 @@ - (void)setMathitCTFont:(CTFontRef)mathitCTFont {
+     _mathitCTFont = mathitCTFont;
+ }
+ 
+-+ (NSBundle*) fontBundle
+-{
+-    // SwiftPM exposes processed resources via the generated module bundle.
+-#if SWIFT_PACKAGE
+-    return SWIFTPM_MODULE_BUNDLE;
+-#else
+-    // For Xcode builds: fonts are added directly to the app/test bundle.
+-    return [NSBundle bundleForClass:[self class]];
+-#endif
+-}
+-
+ - (MTFont *)copyFontWithSize:(CGFloat)size
+ {
+     MTFont* copyFont = [[[self class] alloc] init];

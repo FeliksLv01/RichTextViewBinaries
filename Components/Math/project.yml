@@ -16,11 +16,9 @@ targets:
         headerVisibility: public
       - path: Support/iosMath.h
         headerVisibility: public
-      - path: .build/source/iosMath/iosMath/fonts
-        buildPhase: resources
-        type: folder
     settings:
       base:
+        MACH_O_TYPE: staticlib
         PRODUCT_BUNDLE_IDENTIFIER: io.github.felikslv01.iosMath
         PRODUCT_NAME: iosMath
         DEFINES_MODULE: YES

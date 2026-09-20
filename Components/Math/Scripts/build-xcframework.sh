@@ -14,6 +14,11 @@ fi
 rm -rf "$BUILD_DIR" "$OUTPUT_DIR" "$ROOT_DIR/iosMath.xcodeproj" "$ROOT_DIR/.build/source"
 mkdir -p "$BUILD_DIR" "$OUTPUT_DIR" "$ROOT_DIR/.build/source"
 git clone --quiet --depth=1 "file://$ROOT_DIR/Vendor/iosMath" "$ROOT_DIR/.build/source/iosMath"
+git -C "$ROOT_DIR/.build/source/iosMath" apply "$ROOT_DIR/Patches/iosMath-static-fonts.patch"
+"$ROOT_DIR/Scripts/embed-fonts.rb" \
+  "$ROOT_DIR/.build/source/iosMath" \
+  "$ROOT_DIR/Vendor/iosMath/iosMath/fonts" \
+  "$ROOT_DIR/.build/embedded"
 sed -i '' 's|"lib/MTMathList.h"|"MTMathList.h"|' \
   "$ROOT_DIR/.build/source/iosMath/iosMath/render/MTFontManager.h" \
   "$ROOT_DIR/.build/source/iosMath/iosMath/render/MTMathUILabel.h" \
