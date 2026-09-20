@@ -79,11 +79,13 @@ jobs:
             gh release create "$tag" "$dir/.build/release/iosMath.xcframework.zip" "$dir/LICENSE" --target "$(git rev-parse HEAD)" --generate-notes
           fi
       - name: Publish CocoaPods when configured
-        if: env.COCOAPODS_TRUNK_TOKEN != '' && inputs.component != 'math'
+        if: env.COCOAPODS_TRUNK_TOKEN != ''
         run: |
           dir="${{ steps.component.outputs.dir }}"
           if [[ "${{ inputs.component }}" == "markdown" ]]; then
             pod trunk push "$dir/SwiftMarkdownBinary.podspec" --allow-warnings
+          elif [[ "${{ inputs.component }}" == "math" ]]; then
+            pod trunk push "$dir/RichTextViewMathBinary.podspec" --allow-warnings
           else
             pod trunk push "$dir/RichTextViewTreeSitterBinary.podspec" --allow-warnings
           fi

@@ -36,6 +36,7 @@ case "$COMMAND" in
     else
       "$DIR/Scripts/build-xcframework.sh"
       "$DIR/Scripts/package-release.sh"
+      "$DIR/Scripts/test-cocoapods.sh"
     fi
     ;;
   package)
