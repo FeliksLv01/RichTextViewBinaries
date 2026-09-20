@@ -1,0 +1,8 @@
+.DS_Store
+**/.build/
+**/Artifacts/
+**/*.xcframework/
+**/*.xcframework.zip
+**/*.xcodeproj/
+**/Package.resolved
+xcuserdata/

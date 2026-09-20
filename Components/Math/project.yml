@@ -1,0 +1,42 @@
+name: iosMath
+
+options:
+  deploymentTarget:
+    iOS: "15.0"
+
+targets:
+  iosMath:
+    type: framework
+    platform: iOS
+    sources:
+      - path: .build/source/iosMath/iosMath
+        excludes:
+          - fonts
+          - module.modulemap
+        headerVisibility: public
+      - path: Support/iosMath.h
+        headerVisibility: public
+      - path: .build/source/iosMath/iosMath/fonts
+        buildPhase: resources
+        type: folder
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.felikslv01.iosMath
+        PRODUCT_NAME: iosMath
+        DEFINES_MODULE: YES
+        MODULEMAP_FILE: $(SRCROOT)/Support/module.modulemap
+        GENERATE_INFOPLIST_FILE: YES
+        BUILD_LIBRARY_FOR_DISTRIBUTION: YES
+        SKIP_INSTALL: NO
+        HEADER_SEARCH_PATHS:
+          - $(SRCROOT)/.build/source/iosMath/iosMath
+          - $(SRCROOT)/.build/source/iosMath/iosMath/lib
+          - $(SRCROOT)/.build/source/iosMath/iosMath/lib/internal
+          - $(SRCROOT)/.build/source/iosMath/iosMath/render
+          - $(SRCROOT)/.build/source/iosMath/iosMath/render/internal
+
+schemes:
+  iosMath:
+    build:
+      targets:
+        iosMath: all

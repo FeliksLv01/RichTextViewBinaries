@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      markdown: ${{ steps.filter.outputs.markdown }}
+      tree_sitter: ${{ steps.filter.outputs.tree_sitter }}
+      math: ${{ steps.filter.outputs.math }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            markdown:
+              - 'Components/Markdown/**'
+              - 'Scripts/**'
+              - '.github/actions/**'
+              - '.github/workflows/**'
+              - '.gitmodules'
+            tree_sitter:
+              - 'Components/TreeSitter/**'
+              - 'Scripts/**'
+              - '.github/actions/**'
+              - '.github/workflows/**'
+              - '.gitmodules'
+            math:
+              - 'Components/Math/**'
+              - 'Scripts/**'
+              - '.github/actions/**'
+              - '.github/workflows/**'
+              - '.gitmodules'
+
+  markdown:
+    needs: changes
+    if: needs.changes.outputs.markdown == 'true'
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/setup
+      - run: ./Scripts/run-component.sh markdown ci
+
+  tree-sitter:
+    needs: changes
+    if: needs.changes.outputs.tree_sitter == 'true'
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/setup
+      - run: ./Scripts/run-component.sh tree-sitter ci
+
+  math:
+    needs: changes
+    if: needs.changes.outputs.math == 'true'
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/setup
+      - run: ./Scripts/run-component.sh math ci

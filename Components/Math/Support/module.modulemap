@@ -1,0 +1,14 @@
+framework module iosMath {
+    umbrella header "iosMath.h"
+    exclude header "NSColor+HexString.h"
+    exclude header "NSView+backgroundColor.h"
+    exclude header "MTLabel.h"
+    exclude header "MTMathListDisplayInternal.h"
+    exclude header "MTUnicode.h"
+    exclude header "MTMacroParameterAtom.h"
+    exclude header "NSBezierPath+addLineToPoint.h"
+    exclude header "MTFont+Internal.h"
+    exclude header "MTMathUILabelInternal.h"
+    exclude header "MTFontMathTable.h"
+    export *
+}

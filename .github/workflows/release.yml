@@ -1,0 +1,89 @@
+name: Release component
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Component to build and release
+        required: true
+        type: choice
+        options:
+          - markdown
+          - tree-sitter
+          - math
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rich-text-view-binaries-release-${{ inputs.component }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-26
+    env:
+      GH_TOKEN: ${{ github.token }}
+      COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - id: component
+        shell: bash
+        run: |
+          case "${{ inputs.component }}" in
+            markdown) dir=Components/Markdown ;;
+            tree-sitter) dir=Components/TreeSitter ;;
+            math) dir=Components/Math ;;
+          esac
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          echo "tag=$(GITHUB_REF=refs/heads/main "$dir/Scripts/release-guard.sh")" >> "$GITHUB_OUTPUT"
+      - run: ./Scripts/run-component.sh "${{ inputs.component }}" ci
+      - run: ./Scripts/run-component.sh "${{ inputs.component }}" package
+      - name: Update release metadata
+        run: |
+          dir="${{ steps.component.outputs.dir }}"
+          if [[ "${{ inputs.component }}" == "markdown" ]]; then
+            "$dir/Scripts/update-release-metadata.rb"
+          elif [[ "${{ inputs.component }}" == "tree-sitter" ]]; then
+            "$dir/Scripts/update-release-metadata.rb"
+          else
+            "$dir/Scripts/update-release-metadata.rb"
+          fi
+      - name: Commit metadata and tag
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add "${{ steps.component.outputs.dir }}"
+          git diff --cached --quiet || git commit -m "chore(${{ inputs.component }}): prepare ${{ steps.component.outputs.tag }}"
+          git push origin HEAD:main
+          git tag "${{ steps.component.outputs.tag }}"
+          git push origin "${{ steps.component.outputs.tag }}"
+      - name: Publish GitHub release
+        run: |
+          component="${{ inputs.component }}"
+          dir="${{ steps.component.outputs.dir }}"
+          tag="${{ steps.component.outputs.tag }}"
+          if [[ "$component" == "markdown" ]]; then
+            gh release create "$tag" "$dir/Markdown.xcframework.zip" "$dir/NOTICE" --target "$(git rev-parse HEAD)" --generate-notes
+          elif [[ "$component" == "tree-sitter" ]]; then
+            cp "$dir/Vendor/swift-tree-sitter/LICENSE" "$dir/.build/release/SwiftTreeSitter-LICENSE"
+            cp "$dir/Vendor/tree-sitter/LICENSE" "$dir/.build/release/TreeSitter-LICENSE"
+            cp "$dir/Vendor/tree-sitter-swift/LICENSE" "$dir/.build/release/TreeSitterSwift-LICENSE"
+            gh release create "$tag" "$dir"/.build/release/*.zip "$dir"/.build/release/*-LICENSE "$dir/THIRD_PARTY_NOTICES.md" --target "$(git rev-parse HEAD)" --generate-notes
+          else
+            gh release create "$tag" "$dir/.build/release/iosMath.xcframework.zip" "$dir/LICENSE" --target "$(git rev-parse HEAD)" --generate-notes
+          fi
+      - name: Publish CocoaPods when configured
+        if: env.COCOAPODS_TRUNK_TOKEN != '' && inputs.component != 'math'
+        run: |
+          dir="${{ steps.component.outputs.dir }}"
+          if [[ "${{ inputs.component }}" == "markdown" ]]; then
+            pod trunk push "$dir/SwiftMarkdownBinary.podspec" --allow-warnings
+          else
+            pod trunk push "$dir/RichTextViewTreeSitterBinary.podspec" --allow-warnings
+          fi

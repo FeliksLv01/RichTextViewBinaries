@@ -1,0 +1,10 @@
+name: Setup Apple binary build
+description: Install the shared Xcode build tools
+runs:
+  using: composite
+  steps:
+    - uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    - shell: bash
+      run: brew install xcbeautify cocoapods xcodegen

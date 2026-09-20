@@ -1,0 +1,20 @@
+[submodule "Components/Markdown/Vendor/swift-markdown"]
+	path = Components/Markdown/Vendor/swift-markdown
+	url = https://github.com/swiftlang/swift-markdown.git
+	shallow = true
+[submodule "Components/TreeSitter/Vendor/swift-tree-sitter"]
+	path = Components/TreeSitter/Vendor/swift-tree-sitter
+	url = https://github.com/tree-sitter/swift-tree-sitter.git
+	shallow = true
+[submodule "Components/TreeSitter/Vendor/tree-sitter"]
+	path = Components/TreeSitter/Vendor/tree-sitter
+	url = https://github.com/tree-sitter/tree-sitter.git
+	shallow = true
+[submodule "Components/TreeSitter/Vendor/tree-sitter-swift"]
+	path = Components/TreeSitter/Vendor/tree-sitter-swift
+	url = https://github.com/alex-pinkus/tree-sitter-swift.git
+	shallow = true
+[submodule "Components/Math/Vendor/iosMath"]
+	path = Components/Math/Vendor/iosMath
+	url = https://github.com/kostub/iosMath.git
+	shallow = true
