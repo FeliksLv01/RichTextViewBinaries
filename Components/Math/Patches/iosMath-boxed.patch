@@ -1,0 +1,139 @@
+diff --git a/iosMath/lib/MTMathList.h b/iosMath/lib/MTMathList.h
+index cd4a206..fc01781 100644
+--- a/iosMath/lib/MTMathList.h
++++ b/iosMath/lib/MTMathList.h
+@@ -652,6 +652,9 @@ typedef NS_ENUM(NSUInteger, MTStrikeStyle) {
+  the content lives in `innerList` and the flags below select the variant. */
+ @interface MTMathBox : MTMathAtom
+ 
++/// Draw a padded frame around the child (\boxed).
++@property (nonatomic) BOOL framed;
++
+ /// Creates an empty box atom (type = kMTMathAtomBox).
+ - (instancetype) init NS_DESIGNATED_INITIALIZER;
+ 
+diff --git a/iosMath/lib/MTMathList.m b/iosMath/lib/MTMathList.m
+index a4c250f..135aece 100644
+--- a/iosMath/lib/MTMathList.m
++++ b/iosMath/lib/MTMathList.m
+@@ -1056,6 +1056,7 @@ - (instancetype)initWithType:(MTMathAtomType)type value:(NSString *)value
+ // picked from the flag matrix. Shared by stringValue and appendLaTeXToString:.
+ - (NSString *)latexCommand
+ {
++    if (self.framed) { return @"\\boxed"; }
+     if (self.strikeStyle != kMTStrikeNone) {
+         switch (self.strikeStyle) {
+             case kMTStrikeForward:    return @"\\cancel";
+@@ -1115,6 +1116,7 @@ - (id)copyWithZone:(NSZone *)zone
+     op->_drawChild = self.drawChild;
+     op->_hAlign = self.hAlign;
+     op->_strikeStyle = self.strikeStyle;
++    op->_framed = self.framed;
+     return op;
+ }
+ 
+diff --git a/iosMath/lib/MTMathListBuilder.m b/iosMath/lib/MTMathListBuilder.m
+index ddada1e..99f9a54 100644
+--- a/iosMath/lib/MTMathListBuilder.m
++++ b/iosMath/lib/MTMathListBuilder.m
+@@ -1120,6 +1120,7 @@ - (MTMathAtom*) getBoundaryAtom:(NSString*) delimiterType
+     static dispatch_once_t onceToken;
+     dispatch_once(&onceToken, ^{
+         commands = @{
++            @"boxed":     @{@"kW":@YES, @"kH":@YES, @"kD":@YES, @"draw":@YES, @"framed":@YES},
+             @"phantom":   @{@"kW":@YES, @"kH":@YES, @"kD":@YES, @"draw":@NO},
+             @"hphantom":  @{@"kW":@YES, @"kH":@NO,  @"kD":@NO,  @"draw":@NO},
+             @"vphantom":  @{@"kW":@NO,  @"kH":@YES, @"kD":@YES, @"draw":@NO},
+@@ -1370,6 +1371,7 @@ - (MTMathAtom*) atomForCommand:(NSString*) command
+     NSDictionary* boxSpec = [MTMathListBuilder boxCommands][command];
+     if (boxSpec) {
+         MTMathBox* box = [MTMathBox new];
++        box.framed = [boxSpec[@"framed"] boolValue];
+         box.keepWidth  = [boxSpec[@"kW"] boolValue];
+         box.keepHeight = [boxSpec[@"kH"] boolValue];
+         box.keepDepth  = [boxSpec[@"kD"] boolValue];
+@@ -1412,7 +1414,8 @@ - (MTMathAtom*) atomForCommand:(NSString*) command
+             }
+         }
+ 
+-        box.innerList = [self buildInternal:true];
++        box.innerList = box.framed ? [self requiredArgumentWithError:MTParseErrorMissingArgument] : [self buildInternal:true];
++        if (!box.innerList) { return nil; }
+         return box;
+     }
+ 
+diff --git a/iosMath/render/MTMathListDisplay.m b/iosMath/render/MTMathListDisplay.m
+index c13e309..3da9d4f 100644
+--- a/iosMath/render/MTMathListDisplay.m
++++ b/iosMath/render/MTMathListDisplay.m
+@@ -1155,7 +1155,17 @@ - (void) updateChildPosition
+             default:                 offset = 0;                     break;  // \rlap
+         }
+     }
+-    self.child.position = CGPointMake(self.position.x + offset, self.position.y);
++    self.child.position = CGPointMake(self.position.x + offset + self.framePadding, self.position.y);
++}
++
++- (void)setFramePadding:(CGFloat)padding
++{
++    CGFloat delta = padding - _framePadding;
++    _framePadding = padding;
++    self.width += 2 * delta;
++    self.ascent += delta;
++    self.descent += delta;
++    [self updateChildPosition];
+ }
+ 
+ static NSValue* MTBoxPointValue(CGPoint p) {
+@@ -1212,6 +1222,15 @@ - (void)draw:(CGContextRef)context
+     }
+     [self.child draw:context];          // child holds its own absolute position (set in setPosition:)
+ 
++    if (self.framePadding > 0) {
++        CGContextSaveGState(context);
++        CGContextSetStrokeColorWithColor(context, self.textColor.CGColor);
++        CGContextSetLineWidth(context, self.strikeThickness);
++        CGRect bounds = CGRectMake(self.position.x, self.position.y - self.descent, self.width, self.ascent + self.descent);
++        CGContextStrokeRect(context, CGRectInset(bounds, self.strikeThickness / 2, self.strikeThickness / 2));
++        CGContextRestoreGState(context);
++    }
++
+     NSArray<NSValue*>* points = [self strikeSegmentPoints];
+     if (points.count == 0) {
+         return;                         // smash/lap or kMTStrikeNone: no overlay
+diff --git a/iosMath/render/internal/MTMathListDisplayInternal.h b/iosMath/render/internal/MTMathListDisplayInternal.h
+index bdcf1b5..baee246 100644
+--- a/iosMath/render/internal/MTMathListDisplayInternal.h
++++ b/iosMath/render/internal/MTMathListDisplayInternal.h
+@@ -190,6 +190,8 @@ NS_ASSUME_NONNULL_BEGIN
+ 
+ @interface MTMathBoxDisplay ()
+ 
++@property (nonatomic) CGFloat framePadding;
++
+ - (instancetype) initWithChild:(MTMathListDisplay*) child
+                      keepWidth:(BOOL) keepWidth
+                     keepHeight:(BOOL) keepHeight
+diff --git a/iosMath/render/internal/MTTypesetter.m b/iosMath/render/internal/MTTypesetter.m
+index e4c842d..9c9b69c 100644
+--- a/iosMath/render/internal/MTTypesetter.m
++++ b/iosMath/render/internal/MTTypesetter.m
+@@ -710,7 +710,8 @@ - (void) createDisplayAtoms:(NSArray*) preprocessed
+                 atom.type = kMTMathAtomOrdinary;
+ 
+                 MTMathBox* boxAtom = (MTMathBox*) atom;
+-                MTMathListDisplay* child = [MTTypesetter createLineForMathList:boxAtom.innerList font:_font style:_style];
++                MTMathListDisplay* child = [MTTypesetter createLineForMathList:boxAtom.innerList
++                    font:boxAtom.framed ? _styleFont : _font style:boxAtom.framed ? kMTLineStyleDisplay : _style];
+                 MTMathBoxDisplay* display = [[MTMathBoxDisplay alloc] initWithChild:child
+                                                                          keepWidth:boxAtom.keepWidth
+                                                                         keepHeight:boxAtom.keepHeight
+@@ -721,6 +722,8 @@ - (void) createDisplayAtoms:(NSArray*) preprocessed
+                                                                    strikeThickness:_styleFont.mathTable.fractionRuleThickness
+                                                               strikeVerticalOffset:0.55 * _styleFont.mathTable.accentBaseHeight
+                                                                              range:atom.indexRange];
++                // TeX fboxsep is 3pt at 10pt; include the rule in the occupied bounds.
++                if (boxAtom.framed) { display.framePadding = 0.3 * _styleFont.fontSize + display.strikeThickness; }
+                 display.position = _currentPosition;
+                 _currentPosition.x += display.width;   // 0 for vphantom/laps
+                 [_displayAtoms addObject:display];

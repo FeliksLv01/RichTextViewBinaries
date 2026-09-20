@@ -18,3 +18,5 @@ Consumers can use the `RichTextViewMathBinary` Swift package product, the
 
 From the repository root, run `./Scripts/run-component.sh math ci` to build
 and package only this component.
+
+The `iosMath-boxed.patch` adds `\boxed{…}` with padded border geometry, nested formulas, scripts and text. `Scripts/test-boxed.sh` checks the built simulator binary, including border pixels; the build script runs it automatically.

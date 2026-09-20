@@ -14,7 +14,9 @@ fi
 rm -rf "$BUILD_DIR" "$OUTPUT_DIR" "$ROOT_DIR/iosMath.xcodeproj" "$ROOT_DIR/.build/source"
 mkdir -p "$BUILD_DIR" "$OUTPUT_DIR" "$ROOT_DIR/.build/source"
 git clone --quiet --depth=1 "file://$ROOT_DIR/Vendor/iosMath" "$ROOT_DIR/.build/source/iosMath"
-git -C "$ROOT_DIR/.build/source/iosMath" apply "$ROOT_DIR/Patches/iosMath-static-fonts.patch"
+for patch in "$ROOT_DIR"/Patches/*.patch; do
+  git -C "$ROOT_DIR/.build/source/iosMath" apply "$patch"
+done
 "$ROOT_DIR/Scripts/embed-fonts.rb" \
   "$ROOT_DIR/.build/source/iosMath" \
   "$ROOT_DIR/Vendor/iosMath/iosMath/fonts" \
@@ -50,6 +52,8 @@ archive "generic/platform=iOS Simulator" "$BUILD_DIR/iosMath-iOS-Simulator.xcarc
 xcodebuild -create-xcframework \
   -framework "$BUILD_DIR/iosMath-iOS.xcarchive/Products/Library/Frameworks/iosMath.framework" \
   -framework "$BUILD_DIR/iosMath-iOS-Simulator.xcarchive/Products/Library/Frameworks/iosMath.framework" \
-  -output "$OUTPUT_DIR/iosMath.xcframework"
+  -output "$OUTPUT_DIR/iosMath.xcframework" 2>&1 | xcbeautify
 
 "$ROOT_DIR/Scripts/verify-xcframework.sh" "$OUTPUT_DIR/iosMath.xcframework"
+
+"$ROOT_DIR/Scripts/test-boxed.sh"
